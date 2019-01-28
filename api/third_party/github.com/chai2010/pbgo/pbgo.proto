@@ -1,0 +1,42 @@
+// Copyright 2018 <chaishushan{AT}gmail.com>. All rights reserved.
+// Use of this source code is governed by a Apache
+// license that can be found in the LICENSE file.
+
+syntax = "proto3";
+
+package pbgo;
+
+option go_package = "github.com/chai2010/pbgo;pbgo";
+
+import "google/protobuf/descriptor.proto";
+
+extend google.protobuf.ServiceOptions {
+	ServiceOptions service_opt = 20180715;
+}
+extend google.protobuf.MethodOptions {
+	HttpRule rest_api = 20180715;
+}
+
+message ServiceOptions {
+	string rename = 1;
+}
+
+message HttpRule {
+	string get = 1;
+	string put = 2;
+	string post = 3;
+	string delete = 4;
+	string patch = 5;
+
+	repeated CustomHttpRule additional_bindings = 6;
+}
+
+message CustomHttpRule {
+	string method = 1;
+	string url = 2;
+
+	string content_type = 3;  // must be 'string' type
+	string content_body = 4;  // must be 'bytes' type
+	string custom_header = 5; // must be 'map<string,string>' type
+	string request_body = 6;  // must be 'bytes' type
+}
