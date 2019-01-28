@@ -29,6 +29,10 @@ var (
 	flagRoot = flag.String("root", "./testdata", "set root dir")
 )
 
+func init() {
+	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
+}
+
 func main() {
 	flag.Parse()
 
@@ -48,7 +52,7 @@ func main() {
 	}()
 
 	ctx := context.Background()
-	router := pb.PBGOHelloServiceGrpcHandler(ctx, helloService)
+	router := pb.PBGOHelloServiceGrpcHandler(ctx, helloService, nil)
 	log.Fatal(http.ListenAndServe(":8080", someMiddleware(router)))
 }
 
@@ -74,36 +78,65 @@ func NewHelloService(rootdir string) *HelloService {
 	}
 }
 
-func (p *HelloService) Hello(ctx context.Context, args *pb.String) (*pb.String, error) {
-	reply := &pb.String{Value: "hello:" + args.GetValue()}
+func (p *HelloService) Hello(ctx context.Context, req *pb.String) (*pb.String, error) {
+	log.Printf("HelloService.Hello: req = %v\n", req)
+
+	reply := &pb.String{Value: "hello:" + req.GetValue()}
 	return reply, nil
 }
 
-func (p *HelloService) Echo(ctx context.Context, args *pb.Message) (*pb.Message, error) {
-	reply := &pb.Message{Value: "hello:" + args.GetValue()}
+func (p *HelloService) Echo(ctx context.Context, req *pb.Message) (*pb.Message, error) {
+	log.Printf("HelloService.Echo: req = %v\n", req)
+
+	conn, err := grpc.Dial("localhost:3999", grpc.WithInsecure())
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	defer conn.Close()
+
+	client := pb.NewHelloServiceClient(conn)
+	result, err := client.Hello(context.Background(), &pb.String{Value: "hello"})
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+
+	reply := &pb.Message{
+		Value: result.GetValue(),
+	}
+
 	return reply, nil
 }
 
-func (p *HelloService) Static(ctx context.Context, args *pb.String) (*pb.StaticFile, error) {
-	data, err := ioutil.ReadFile(p.rootdir + "/" + args.Value)
+func (p *HelloService) Static(ctx context.Context, req *pb.String) (*pb.StaticFile, error) {
+	log.Printf("HelloService.Static: req = %v\n", req)
+
+	data, err := ioutil.ReadFile(p.rootdir + "/" + req.Value)
 	if err != nil {
 		return nil, err
 	}
 
 	reply := new(pb.StaticFile)
-	reply.ContentType = mime.TypeByExtension(args.Value)
+	reply.ContentType = mime.TypeByExtension(req.Value)
 	reply.ContentBody = data
 	return reply, nil
 }
 
 func (p *HelloService) ServerStream(*pb.String, pb.HelloService_ServerStreamServer) error {
+	log.Printf("HelloService.ServerStream: todo\n")
+
 	return errors.New("todo")
 }
 
 func (p *HelloService) ClientStream(pb.HelloService_ClientStreamServer) error {
+	log.Printf("HelloService.ClientStream: todo\n")
+
 	return errors.New("todo")
 }
 
 func (p *HelloService) Channel(pb.HelloService_ChannelServer) error {
+	log.Printf("HelloService.Channel: todo\n")
+
 	return errors.New("todo")
 }
