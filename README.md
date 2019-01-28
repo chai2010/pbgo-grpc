@@ -2,6 +2,77 @@
 
 - https://github.com/chai2010/pbgo
 
+## Proto File(hello.proto)
+
+```protobuf
+syntax = "proto3";
+
+package hello_pb;
+
+import "github.com/chai2010/pbgo/pbgo.proto";
+
+message String {
+	string value = 1;
+}
+message StaticFile {
+	string content_type = 1;
+	bytes content_body = 2;
+}
+
+message Message {
+	string value = 1;
+	repeated int32 array = 2;
+	map<string,string> dict = 3;
+	String subfiled = 4;
+}
+
+service HelloService {
+	option (pbgo.service_opt) = {
+		rename: "PBGOHelloService"
+	};
+
+	rpc Hello (String) returns (String) {
+		option (pbgo.rest_api) = {
+			get: "/hello/:value"
+			post: "/hello"
+
+			additional_bindings {
+				method: "DELETE"; url: "/hello"
+			}
+			additional_bindings {
+				method: "PATCH"; url: "/hello"
+			}
+		};
+	}
+	rpc Echo (Message) returns (Message) {
+		option (pbgo.rest_api) = {
+			get: "/echo/:subfiled.value"
+		};
+	}
+	rpc Static(String) returns (StaticFile) {
+		option (pbgo.rest_api) = {
+			additional_bindings {
+				method: "GET"
+				url: "/static/:value"
+				content_type: ":content_type"
+				content_body: ":content_body"
+			}
+		};
+	}
+
+	rpc ServerStream(String) returns (stream String);
+	rpc ClientStream(stream String) returns (String);
+	rpc Channel(stream String) returns (stream String);
+}
+```
+
+Generate stub code:
+
+```
+$ go install github.com/chai2010/pbgo-examples/protoc-gen-pbgo-examples
+$ protoc -I=. -I=./api/third_party --pbgo-examples_out=plugins=grpc+pbgo:. hello.proto
+```
+
 ## Example
 
 ```go
