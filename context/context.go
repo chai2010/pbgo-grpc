@@ -1,6 +1,6 @@
 // copy from https://github.com/grpc-ecosystem/grpc-gateway/tree/master/runtime
 
-package runtime
+package context
 
 import (
 	"context"

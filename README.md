@@ -69,8 +69,8 @@ service HelloService {
 Generate stub code:
 
 ```
-$ go install github.com/chai2010/pbgo-examples/protoc-gen-pbgo-examples
-$ protoc -I=. -I=./api/third_party --pbgo-examples_out=plugins=grpc+pbgo:. hello.proto
+$ go install github.com/chai2010/pbgo-grpc/protoc-gen-pbgo-grpc
+$ protoc -I=. -I=./api/third_party --pbgo-grpc_out=plugins=grpc+pbgo:. hello.proto
 ```
 
 ## Example
@@ -92,7 +92,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
-	pb "github.com/chai2010/pbgo-examples/api"
+	pb "github.com/chai2010/pbgo-grpc/api"
 )
 
 var (

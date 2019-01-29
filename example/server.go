@@ -18,7 +18,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
-	pb "github.com/chai2010/pbgo-examples/api"
+	pb "github.com/chai2010/pbgo-grpc/example/api"
 )
 
 var (

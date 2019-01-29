@@ -8,13 +8,13 @@ default:
 	mkdir -p ./third_party/github.com/chai2010/pbgo
 	go run ./tools/sync_proto_file.go > ./third_party/github.com/chai2010/pbgo/pbgo.proto
 
-	go fmt github.com/chai2010/pbgo-examples/protoc-gen-pbgo-examples/...
-	go install github.com/chai2010/pbgo-examples/protoc-gen-pbgo-examples/...
+	go fmt github.com/chai2010/pbgo-grpc/protoc-gen-pbgo-grpc/...
+	go install github.com/chai2010/pbgo-grpc/protoc-gen-pbgo-grpc/...
 	protoc -I=. -I=./third_party --pbgo-examples_out=plugins=grpc+pbgo:. hello.proto
 	go fmt && go vet && go test
 
 protoc-gen-pbgo:
-	go install github.com/chai2010/pbgo-examples/protoc-gen-pbgo-examples
+	go install github.com/chai2010/pbgo-grpc/protoc-gen-pbgo-grpc
 
 clean:
 	-rm *.pb.go

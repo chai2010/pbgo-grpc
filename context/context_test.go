@@ -1,6 +1,6 @@
 // copy from https://github.com/grpc-ecosystem/grpc-gateway/tree/master/runtime
 
-package runtime_test
+package context_test
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	runtime "github.com/chai2010/pbgo-examples/grpc-context"
+	runtime "github.com/chai2010/pbgo-grpc/context"
 	"google.golang.org/grpc/metadata"
 )
 
