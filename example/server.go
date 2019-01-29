@@ -93,6 +93,8 @@ func (p *HelloService) Hello(ctx context.Context, req *pb.String) (*pb.String, e
 
 	if md, ok := metadata.FromIncomingContext(ctx); ok {
 		log.Printf("md: %v\n", md)
+	} else {
+		log.Println("no metadata")
 	}
 
 	reply := &pb.String{Value: "hello:" + req.GetValue()}
