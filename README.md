@@ -122,7 +122,7 @@ func main() {
 	}()
 
 	ctx := context.Background()
-	router := pb.PBGOHelloServiceGrpcHandler(ctx, helloService)
+	router := pb.PBGOHelloServiceGrpcHandler(ctx, helloService, nil)
 	log.Fatal(http.ListenAndServe(":8080", someMiddleware(router)))
 }
 
@@ -154,7 +154,24 @@ func (p *HelloService) Hello(ctx context.Context, args *pb.String) (*pb.String, 
 }
 
 func (p *HelloService) Echo(ctx context.Context, args *pb.Message) (*pb.Message, error) {
-	reply := &pb.Message{Value: "hello:" + args.GetValue()}
+	conn, err := grpc.Dial("localhost:3999", grpc.WithInsecure())
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	defer conn.Close()
+
+	client := pb.NewHelloServiceClient(conn)
+	result, err := client.Hello(context.Background(), &pb.String{Value: "hello"})
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+
+	reply := &pb.Message{
+		Value: result.GetValue(),
+	}
+
 	return reply, nil
 }
 

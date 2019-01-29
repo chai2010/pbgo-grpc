@@ -44,6 +44,7 @@ func main() {
 
 		pb.RegisterHelloServiceServer(grpcServer, helloService)
 
+		log.Println("grpc server on :3999")
 		lis, err := net.Listen("tcp", ":3999")
 		if err != nil {
 			log.Fatal(err)
@@ -53,6 +54,8 @@ func main() {
 
 	ctx := context.Background()
 	router := pb.PBGOHelloServiceGrpcHandler(ctx, helloService, nil)
+
+	log.Println("http server on :8080")
 	log.Fatal(http.ListenAndServe(":8080", someMiddleware(router)))
 }
 
