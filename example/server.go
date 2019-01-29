@@ -16,8 +16,10 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/reflection"
 
+	ctxpkg "github.com/chai2010/pbgo-grpc/context"
 	pb "github.com/chai2010/pbgo-grpc/example/api"
 )
 
@@ -53,7 +55,12 @@ func main() {
 	}()
 
 	ctx := context.Background()
-	router := pb.PBGOHelloServiceGrpcHandler(ctx, helloService, nil)
+	router := pb.PBGOHelloServiceGrpcHandler(
+		ctx, helloService,
+		func(ctx context.Context, req *http.Request) (context.Context, error) {
+			return ctxpkg.AnnotateContext(ctx, req, nil)
+		},
+	)
 
 	log.Println("http server on :8080")
 	log.Fatal(http.ListenAndServe(":8080", someMiddleware(router)))
@@ -83,6 +90,10 @@ func NewHelloService(rootdir string) *HelloService {
 
 func (p *HelloService) Hello(ctx context.Context, req *pb.String) (*pb.String, error) {
 	log.Printf("HelloService.Hello: req = %v\n", req)
+
+	if md, ok := metadata.FromIncomingContext(ctx); ok {
+		log.Printf("md: %v\n", md)
+	}
 
 	reply := &pb.String{Value: "hello:" + req.GetValue()}
 	return reply, nil
