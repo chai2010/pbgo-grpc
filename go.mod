@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-module github.com/chai2010/pbgo-examples
+module github.com/chai2010/pbgo-grpc
 
 require (
 	github.com/chai2010/pbgo v1.2.2
