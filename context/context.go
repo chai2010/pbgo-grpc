@@ -25,10 +25,10 @@ const MetadataHeaderPrefix = "Grpc-Metadata-"
 
 // MetadataPrefix is prepended to permanent HTTP header keys (as specified
 // by the IANA) when added to the gRPC context.
-const MetadataPrefix = "grpcgateway-"
+const MetadataPrefix = "pbgo-grpc-"
 
 // MetadataTrailerPrefix is prepended to gRPC metadata as it is converted to
-// HTTP headers in a response handled by grpc-gateway
+// HTTP headers in a response handled by pbgo-grpc
 const MetadataTrailerPrefix = "Grpc-Trailer-"
 
 const metadataGrpcTimeout = "Grpc-Timeout"
@@ -55,7 +55,7 @@ func decodeBinHeader(v string) ([]byte, error) {
 type HeaderMatcherFunc func(string) (string, bool)
 
 // DefaultHeaderMatcher is used to pass http request headers to/from gRPC context. This adds permanent HTTP header
-// keys (as specified by the IANA) to gRPC context with grpcgateway- prefix. HTTP headers that start with
+// keys (as specified by the IANA) to gRPC context with pbgo-grpc- prefix. HTTP headers that start with
 // 'Grpc-Metadata-' are mapped to gRPC metadata after removing prefix 'Grpc-Metadata-'.
 func DefaultHeaderMatcher(key string) (string, bool) {
 	key = textproto.CanonicalMIMEHeaderKey(key)
@@ -67,18 +67,51 @@ func DefaultHeaderMatcher(key string) (string, bool) {
 	return "", false
 }
 
-/*
-AnnotateContext adds context information such as metadata from the request.
-
-At a minimum, the RemoteAddr is included in the fashion of "X-Forwarded-For",
-except that the forwarded destination is not another HTTP service but rather
-a gRPC service.
-*/
-func AnnotateContext(
+// AnnotateIncomingContext adds context information such as metadata from the request.
+//
+// At a minimum, the RemoteAddr is included in the fashion of "X-Forwarded-For",
+// except that the forwarded destination is not another HTTP service but rather
+// a gRPC service.
+func AnnotateIncomingContext(
 	ctx context.Context, req *http.Request,
 	incomingHeaderMatcher HeaderMatcherFunc,
 	metadataAnnotators ...func(context.Context, *http.Request) metadata.MD,
 ) (context.Context, error) {
+	md, err := annotateContext(ctx, req, incomingHeaderMatcher, metadataAnnotators...)
+	if err != nil {
+		return nil, err
+	}
+	if len(md) == 0 {
+		return ctx, nil
+	}
+	return metadata.NewIncomingContext(ctx, md), nil
+}
+
+// AnnotateOutgoingContext adds context information such as metadata from the request.
+//
+// At a minimum, the RemoteAddr is included in the fashion of "X-Forwarded-For",
+// except that the forwarded destination is not another HTTP service but rather
+// a gRPC service.
+func AnnotateOutgoingContext(
+	ctx context.Context, req *http.Request,
+	incomingHeaderMatcher HeaderMatcherFunc,
+	metadataAnnotators ...func(context.Context, *http.Request) metadata.MD,
+) (context.Context, error) {
+	md, err := annotateContext(ctx, req, incomingHeaderMatcher, metadataAnnotators...)
+	if err != nil {
+		return nil, err
+	}
+	if len(md) == 0 {
+		return ctx, nil
+	}
+	return metadata.NewOutgoingContext(ctx, md), nil
+}
+
+func annotateContext(
+	ctx context.Context, req *http.Request,
+	fnHeaderMatcher HeaderMatcherFunc,
+	metadataAnnotators ...func(context.Context, *http.Request) metadata.MD,
+) (metadata.MD, error) {
 	var pairs []string
 	timeout := DefaultContextTimeout
 	if tm := req.Header.Get(metadataGrpcTimeout); tm != "" {
@@ -89,8 +122,8 @@ func AnnotateContext(
 		}
 	}
 
-	if incomingHeaderMatcher == nil {
-		incomingHeaderMatcher = DefaultHeaderMatcher
+	if fnHeaderMatcher == nil {
+		fnHeaderMatcher = DefaultHeaderMatcher
 	}
 
 	for key, vals := range req.Header {
@@ -100,7 +133,7 @@ func AnnotateContext(
 			if key == "Authorization" {
 				pairs = append(pairs, "authorization", val)
 			}
-			if h, ok := incomingHeaderMatcher(key); ok {
+			if h, ok := fnHeaderMatcher(key); ok {
 				// Handles "-bin" metadata in grpc, since grpc will do another base64
 				// encode before sending to server, we need to decode it first.
 				if strings.HasSuffix(key, metadataHeaderBinarySuffix) {
@@ -137,13 +170,14 @@ func AnnotateContext(
 		ctx, _ = context.WithTimeout(ctx, timeout)
 	}
 	if len(pairs) == 0 {
-		return ctx, nil
+		return nil, nil
 	}
 	md := metadata.Pairs(pairs...)
 	for _, mda := range metadataAnnotators {
 		md = metadata.Join(md, mda(ctx, req))
 	}
-	return metadata.NewOutgoingContext(ctx, md), nil
+
+	return md, nil
 }
 
 // ServerMetadata consists of metadata sent from gRPC server.

@@ -13,6 +13,7 @@ import (
 	"mime"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	"google.golang.org/grpc"
@@ -57,8 +58,13 @@ func main() {
 	ctx := context.Background()
 	router := pb.PBGOHelloServiceGrpcHandler(
 		ctx, helloService,
-		func(ctx context.Context, req *http.Request) (context.Context, error) {
-			return ctxpkg.AnnotateContext(ctx, req, nil)
+		func(ctx context.Context, req *http.Request /* , methodName string */) (context.Context, error) {
+			/* if methodName == "Echo" { ... } */
+			if strings.HasPrefix(req.URL.Path, "/echo/") {
+				return ctxpkg.AnnotateOutgoingContext(ctx, req, nil)
+			} else {
+				return ctxpkg.AnnotateIncomingContext(ctx, req, nil)
+			}
 		},
 	)
 
@@ -91,8 +97,12 @@ func NewHelloService(rootdir string) *HelloService {
 func (p *HelloService) Hello(ctx context.Context, req *pb.String) (*pb.String, error) {
 	log.Printf("HelloService.Hello: req = %v\n", req)
 
+	// curl -H "Grpc-Metadata-user-id: chai2010" localhost:8080/hello/gopher
+	// curl -H "Grpc-Metadata-user-password-Bin: MTIzNDU2" localhost:8080/hello/gopher
+	// base64("123456"): MTIzNDU2
 	if md, ok := metadata.FromIncomingContext(ctx); ok {
-		log.Printf("md: %v\n", md)
+		log.Printf("metadata.user-id: %v\n", md["user-id"])
+		log.Printf("metadata.user-password-bin: %v\n", md["user-password-bin"])
 	} else {
 		log.Println("no metadata")
 	}
@@ -104,6 +114,9 @@ func (p *HelloService) Hello(ctx context.Context, req *pb.String) (*pb.String, e
 func (p *HelloService) Echo(ctx context.Context, req *pb.Message) (*pb.Message, error) {
 	log.Printf("HelloService.Echo: req = %v\n", req)
 
+	// curl -H "Grpc-Metadata-user-id: chai2010" localhost:8080/echo/gopher
+	// curl -H "Grpc-Metadata-user-password-Bin: MTIzNDU2" localhost:8080/echo/gopher
+	// base64("123456"): MTIzNDU2
 	conn, err := grpc.Dial("localhost:3999", grpc.WithInsecure())
 	if err != nil {
 		log.Println(err)
@@ -112,7 +125,7 @@ func (p *HelloService) Echo(ctx context.Context, req *pb.Message) (*pb.Message, 
 	defer conn.Close()
 
 	client := pb.NewHelloServiceClient(conn)
-	result, err := client.Hello(context.Background(), &pb.String{Value: "hello"})
+	result, err := client.Hello(ctx, &pb.String{Value: "hello"})
 	if err != nil {
 		log.Println(err)
 		return nil, err

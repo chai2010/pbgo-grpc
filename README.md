@@ -87,12 +87,15 @@ import (
 	"mime"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/reflection"
 
-	pb "github.com/chai2010/pbgo-grpc/api"
+	ctxpkg "github.com/chai2010/pbgo-grpc/context"
+	pb "github.com/chai2010/pbgo-grpc/example/api"
 )
 
 var (
@@ -102,6 +105,10 @@ var (
 var (
 	flagRoot = flag.String("root", "./testdata", "set root dir")
 )
+
+func init() {
+	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
+}
 
 func main() {
 	flag.Parse()
@@ -114,6 +121,7 @@ func main() {
 
 		pb.RegisterHelloServiceServer(grpcServer, helloService)
 
+		log.Println("grpc server on :3999")
 		lis, err := net.Listen("tcp", ":3999")
 		if err != nil {
 			log.Fatal(err)
@@ -122,7 +130,18 @@ func main() {
 	}()
 
 	ctx := context.Background()
-	router := pb.PBGOHelloServiceGrpcHandler(ctx, helloService, nil)
+	router := pb.PBGOHelloServiceGrpcHandler(
+		ctx, helloService,
+		func(ctx context.Context, req *http.Request) (context.Context, error) {
+			if strings.HasPrefix(req.URL.Path, "/echo/") {
+				return ctxpkg.AnnotateOutgoingContext(ctx, req, nil)
+			} else {
+				return ctxpkg.AnnotateIncomingContext(ctx, req, nil)
+			}
+		},
+	)
+
+	log.Println("http server on :8080")
 	log.Fatal(http.ListenAndServe(":8080", someMiddleware(router)))
 }
 
@@ -148,12 +167,29 @@ func NewHelloService(rootdir string) *HelloService {
 	}
 }
 
-func (p *HelloService) Hello(ctx context.Context, args *pb.String) (*pb.String, error) {
-	reply := &pb.String{Value: "hello:" + args.GetValue()}
+func (p *HelloService) Hello(ctx context.Context, req *pb.String) (*pb.String, error) {
+	log.Printf("HelloService.Hello: req = %v\n", req)
+
+	// curl -H "Grpc-Metadata-user-id: chai2010" localhost:8080/hello/gopher
+	// curl -H "Grpc-Metadata-user-password-Bin: MTIzNDU2" localhost:8080/hello/gopher
+	// base64("123456"): MTIzNDU2
+	if md, ok := metadata.FromIncomingContext(ctx); ok {
+		log.Printf("metadata.user-id: %v\n", md["user-id"])
+		log.Printf("metadata.user-password-bin: %v\n", md["user-password-bin"])
+	} else {
+		log.Println("no metadata")
+	}
+
+	reply := &pb.String{Value: "hello:" + req.GetValue()}
 	return reply, nil
 }
 
-func (p *HelloService) Echo(ctx context.Context, args *pb.Message) (*pb.Message, error) {
+func (p *HelloService) Echo(ctx context.Context, req *pb.Message) (*pb.Message, error) {
+	log.Printf("HelloService.Echo: req = %v\n", req)
+
+	// curl -H "Grpc-Metadata-user-id: chai2010" localhost:8080/echo/gopher
+	// curl -H "Grpc-Metadata-user-password-Bin: MTIzNDU2" localhost:8080/echo/gopher
+	// base64("123456"): MTIzNDU2
 	conn, err := grpc.Dial("localhost:3999", grpc.WithInsecure())
 	if err != nil {
 		log.Println(err)
@@ -162,7 +198,7 @@ func (p *HelloService) Echo(ctx context.Context, args *pb.Message) (*pb.Message,
 	defer conn.Close()
 
 	client := pb.NewHelloServiceClient(conn)
-	result, err := client.Hello(context.Background(), &pb.String{Value: "hello"})
+	result, err := client.Hello(ctx, &pb.String{Value: "hello"})
 	if err != nil {
 		log.Println(err)
 		return nil, err
@@ -175,27 +211,35 @@ func (p *HelloService) Echo(ctx context.Context, args *pb.Message) (*pb.Message,
 	return reply, nil
 }
 
-func (p *HelloService) Static(ctx context.Context, args *pb.String) (*pb.StaticFile, error) {
-	data, err := ioutil.ReadFile(p.rootdir + "/" + args.Value)
+func (p *HelloService) Static(ctx context.Context, req *pb.String) (*pb.StaticFile, error) {
+	log.Printf("HelloService.Static: req = %v\n", req)
+
+	data, err := ioutil.ReadFile(p.rootdir + "/" + req.Value)
 	if err != nil {
 		return nil, err
 	}
 
 	reply := new(pb.StaticFile)
-	reply.ContentType = mime.TypeByExtension(args.Value)
+	reply.ContentType = mime.TypeByExtension(req.Value)
 	reply.ContentBody = data
 	return reply, nil
 }
 
 func (p *HelloService) ServerStream(*pb.String, pb.HelloService_ServerStreamServer) error {
+	log.Printf("HelloService.ServerStream: todo\n")
+
 	return errors.New("todo")
 }
 
 func (p *HelloService) ClientStream(pb.HelloService_ClientStreamServer) error {
+	log.Printf("HelloService.ClientStream: todo\n")
+
 	return errors.New("todo")
 }
 
 func (p *HelloService) Channel(pb.HelloService_ChannelServer) error {
+	log.Printf("HelloService.Channel: todo\n")
+
 	return errors.New("todo")
 }
 ```
@@ -225,6 +269,15 @@ $ curl "localhost:8080/echo/gopher?dict%5Babc%5D=123"
 
 $ curl localhost:8080/static/gopher.png
 $ curl localhost:8080/static/hello.txt
+```
+
+gRPC Context:
+
+```
+$ curl -H "Grpc-Metadata-user-id: chai2010" localhost:8080/hello/gopher
+$ curl -H "Grpc-Metadata-user-password-Bin: MTIzNDU2" localhost:8080/hello/gopher
+$ curl -H "Grpc-Metadata-user-id: chai2010" localhost:8080/echo/gopher
+$ curl -H "Grpc-Metadata-user-password-Bin: MTIzNDU2" localhost:8080/echo/gopher
 ```
 
 gRPC API:
