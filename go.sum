@@ -1,6 +1,6 @@
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
-github.com/chai2010/pbgo v1.2.3 h1:iSA7Ttcl15Ml7NvRVWuHDz61m5EfbK84/7+LltIDNaQ=
-github.com/chai2010/pbgo v1.2.3/go.mod h1:ZLncXf24qIkgJLKaDkK0s4gCRYOLDzkZPjp46RfQ5sQ=
+github.com/chai2010/pbgo v1.2.4 h1:IIXyKDgkBUKRZcViZJhBgZR1VgzTknRRDJT1U811wYI=
+github.com/chai2010/pbgo v1.2.4/go.mod h1:ZLncXf24qIkgJLKaDkK0s4gCRYOLDzkZPjp46RfQ5sQ=
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
 github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b/go.mod h1:SBH7ygxi8pfUlaOkMMuAQtPIUF8ecWP5IEl/CR7VP2Q=
 github.com/golang/mock v1.1.1/go.mod h1:oTYuIxOrZwtPieC+H1uAHpcLFnEyAGVDL/k47Jfbm0A=

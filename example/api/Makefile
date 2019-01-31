@@ -10,7 +10,7 @@ default:
 
 	go fmt github.com/chai2010/pbgo-grpc/protoc-gen-pbgo-grpc/...
 	go install github.com/chai2010/pbgo-grpc/protoc-gen-pbgo-grpc/...
-	protoc -I=. -I=./third_party --pbgo-examples_out=plugins=grpc+pbgo:. hello.proto
+	protoc -I=. -I=./third_party --pbgo-grpc_out=plugins=grpc+pbgo:. hello.proto
 	go fmt && go vet && go test
 
 protoc-gen-pbgo:

@@ -87,7 +87,6 @@ import (
 	"mime"
 	"net"
 	"net/http"
-	"strings"
 	"time"
 
 	"google.golang.org/grpc"
@@ -133,7 +132,7 @@ func main() {
 	router := pb.PBGOHelloServiceGrpcHandler(
 		ctx, helloService,
 		func(ctx context.Context, req *http.Request) (context.Context, error) {
-			if strings.HasPrefix(req.URL.Path, "/echo/") {
+			if methodName == "HelloService.Echo" {
 				return ctxpkg.AnnotateOutgoingContext(ctx, req, nil)
 			} else {
 				return ctxpkg.AnnotateIncomingContext(ctx, req, nil)
